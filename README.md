@@ -1,4 +1,4 @@
-#Springboot Chat Application
+# Springboot Chat Application
 
 Welcome to the Chat Application documentation! This application is built using Java Spring Boot and provides a real-time chat platform. Users can log in, join chat rooms, and exchange messages in real time.
 

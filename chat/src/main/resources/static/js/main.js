@@ -22,18 +22,41 @@ let colors = [
 ];
 
 function connect(event) {
-    username = document.querySelector('#login-name').value.trim();
-
-    if(username) {
-        loginPage.classList.add('hidden');
-        chatPage.classList.remove('hidden');
-
-        let socket = new SockJS('/ws');
-        stompClient = Stomp.over(socket);
-
-        stompClient.connect({}, onConnected, onError);
-    }
     event.preventDefault();
+
+    const username = document.querySelector('#login-name').value.trim();
+    const password = document.querySelector('#login-password').value;
+    const user = {
+        username: username,
+        password: password
+    }
+
+    fetch('login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(user)
+    })
+        .then(response => {
+            if (response.ok) {
+                loginPage.classList.add('hidden');
+                chatPage.classList.remove('hidden');
+
+                let socket = new SockJS('/ws');
+                stompClient = Stomp.over(socket);
+
+                stompClient.connect({}, onConnected, onError); // You need to define these functions
+            } else {
+                throw new Error('User login error: ' + response.statusText);
+            }
+        })
+        .then(data => {
+            console.log(data);
+        })
+        .catch(error => {
+            console.error('Error logging user in:', error);
+        });
 }
 
 function register(event) {

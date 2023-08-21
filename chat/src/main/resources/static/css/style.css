@@ -19,6 +19,8 @@ body {
     color: #333;
     background-color: #f4f4f4;
     height: 100%;
+    background: url("../images/wavegif.gif");
+    background-size: cover;
 }
 
 .clearfix:after {
@@ -82,7 +84,7 @@ button.default {
 }
 
 button.primary {
-    background-color: #6db33f;
+    background-color: #ff7f3f;
     box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.12);
     color: #fff;
 }
@@ -93,11 +95,11 @@ button.accent {
     color: #fff;
 }
 
-#username-page {
+#login-page, #register-page {
     text-align: center;
 }
 
-.username-page-container {
+.log-reg-page-container {
     background: #fff;
     box-shadow: 0 1px 11px rgba(0, 0, 0, 0.27);
     border-radius: 2px;
@@ -115,9 +117,11 @@ button.accent {
     right: 0;
     margin: 0 auto;
     margin-top: -160px;
+    opacity: 0.9;
+    box-shadow: 10px 10px rgba(0, 156, 255, 0.2);
 }
 
-.username-page-container .username-submit {
+.log-reg-page-container .log-reg-submit {
     margin-top: 10px;
 }
 
@@ -254,7 +258,7 @@ button.accent {
         height: calc(100% - 30px);
     }
 
-    .username-page-container {
+    .log-reg-page-container {
         width: auto;
         margin-left: 15px;
         margin-right: 15px;
@@ -284,4 +288,17 @@ button.accent {
     .chat-header h2 {
         font-size: 1.1em;
     }
+}
+
+#link-to-register, #link-to-login{
+    color: darkblue;
+}
+#link-to-login:hover{
+    color: blue;
+    cursor: pointer;
+}
+
+#link-to-register:hover{
+    color: blue;
+    cursor: pointer;
 }

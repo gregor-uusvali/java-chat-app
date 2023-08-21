@@ -1,15 +1,20 @@
 'use strict';
 
-const usernamePage = document.querySelector('#username-page');
+const loginPage = document.querySelector('#login-page');
+const registerPage = document.getElementById("register-page")
 const chatPage = document.querySelector('#chat-page');
-const usernameForm = document.querySelector('#usernameForm');
+const loginForm = document.querySelector('#loginForm');
+const registerForm = document.querySelector('#registerForm');
 const messageForm = document.querySelector('#messageForm');
 const messageInput = document.querySelector('#message');
 const messageArea = document.querySelector('#messageArea');
 const connectingElement = document.querySelector('.connecting');
+const linkToRegisterBtn = document.getElementById("link-to-register")
+const linkToLoginPageBtn = document.getElementById('link-to-login')
 
 let stompClient = null;
 let username = null;
+
 
 let colors = [
     '#2196F3', '#32c787', '#00BCD4', '#ff5652',
@@ -17,10 +22,10 @@ let colors = [
 ];
 
 function connect(event) {
-    username = document.querySelector('#name').value.trim();
+    username = document.querySelector('#login-name').value.trim();
 
     if(username) {
-        usernamePage.classList.add('hidden');
+        loginPage.classList.add('hidden');
         chatPage.classList.remove('hidden');
 
         let socket = new SockJS('/ws');
@@ -31,6 +36,48 @@ function connect(event) {
     event.preventDefault();
 }
 
+function register(event) {
+    event.preventDefault();
+    const new_username = document.getElementById('register-name').value;
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const password_confirm = document.getElementById('register-password-confirm').value;
+
+    if (password === password_confirm) {
+        const new_user = {
+            username: new_username,
+            email: email,
+            password: password
+        };
+
+        fetch('/saveUser', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(new_user)
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else if (response.status === 409) {
+                    return response.text(); // Return the error message
+                } else {
+                    throw new Error('User registration error: ' + response.statusText);
+                }
+            })
+            .then(data => {
+                if (typeof data === 'object') {
+                    console.log('User saved: ', data);
+                } else {
+                    console.error('Error saving user', data);
+                }
+            })
+            .catch(error => {
+                console.error('Error saving user', error);
+            });
+    }
+}
 
 function onConnected() {
     // Subscribe to the Public Topic
@@ -113,6 +160,21 @@ function getAvatarColor(messageSender) {
     let index = Math.abs(hash % colors.length);
     return colors[index];
 }
+const showRegisterPage = (e) => {
+    registerPage.classList.remove('hidden')
+    loginPage.classList.add('hidden')
+    e.preventDefault()
+}
 
-usernameForm.addEventListener('submit', connect, true)
+const showLoginPage = (e) => {
+    registerPage.classList.add('hidden')
+    loginPage.classList.remove('hidden')
+    e.preventDefault()
+}
+
+
+linkToRegisterBtn.addEventListener('click', showRegisterPage, true)
+linkToLoginPageBtn.addEventListener('click', showLoginPage, true)
+loginForm.addEventListener('submit', connect, true)
+registerForm.addEventListener('submit', register, true)
 messageForm.addEventListener('submit', sendMessage, true)

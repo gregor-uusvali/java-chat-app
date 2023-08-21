@@ -64,7 +64,7 @@ public class ChatController {
     private String generateAuthToken(int userId, String username) {
         // Logic to generate an authentication token (e.g., JWT)
         // Return the generated token
-        return "GeneratedAuthToken"; // Replace with actual token generation logic
+        return "GeneratedAuthToken"; // Replace with actual token generation logiccc
     }
 
     @GetMapping("/getUser/{id}")

@@ -11,8 +11,6 @@ const messageArea = document.querySelector('#messageArea');
 const connectingElement = document.querySelector('.connecting');
 const linkToRegisterBtn = document.getElementById("link-to-register")
 const linkToLoginPageBtn = document.getElementById('link-to-login')
-const logErrorMsg = document.getElementById("login-error-msg")
-const regErrorMsg = document.getElementById("reg-error-msg")
 
 let stompClient = null;
 let username = null;
@@ -26,7 +24,7 @@ let colors = [
 function connect(event) {
     event.preventDefault();
 
-    username = document.querySelector('#login-name').value.trim();
+    const username = document.querySelector('#login-name').value.trim();
     const password = document.querySelector('#login-password').value;
     const user = {
         username: username,
@@ -49,12 +47,8 @@ function connect(event) {
                 stompClient = Stomp.over(socket);
 
                 stompClient.connect({}, onConnected, onError); // You need to define these functions
-            } else if (response.status == 401) {
-                logErrorMsg.innerText = "Invalid credentials"
-                setTimeout(() => {
-                    logErrorMsg.innerText = ""
-                }, 3000)
-                // throw new Error('User login error: ' + response.statusText);
+            } else {
+                throw new Error('User login error: ' + response.statusText);
             }
         })
         .then(data => {
@@ -99,10 +93,6 @@ function register(event) {
                 if (typeof data === 'object') {
                     console.log('User saved: ', data);
                 } else {
-                    regErrorMsg.innerText = data
-                    setTimeout(() => {
-                        regErrorMsg.innerText = ""
-                    }, 3000)
                     console.error('Error saving user', data);
                 }
             })
@@ -196,16 +186,12 @@ function getAvatarColor(messageSender) {
 const showRegisterPage = (e) => {
     registerPage.classList.remove('hidden')
     loginPage.classList.add('hidden')
-    logErrorMsg.innerText = ""
-    regErrorMsg.innerText = ""
     e.preventDefault()
 }
 
 const showLoginPage = (e) => {
     registerPage.classList.add('hidden')
     loginPage.classList.remove('hidden')
-    regErrorMsg.innerText = ""
-    logErrorMsg.innerText = ""
     e.preventDefault()
 }
 

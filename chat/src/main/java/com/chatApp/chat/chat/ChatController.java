@@ -35,7 +35,15 @@ public class ChatController {
             User savedUser = service.saveUser(user);
             return ResponseEntity.ok(savedUser);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username or email already taken.");
+            String errorMessage = e.getMessage(); // Assuming IllegalArgumentException contains information about conflict (username or email)
+            System.out.println(errorMessage);
+            if (errorMessage.contains("Username")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already taken.");
+            } else if (errorMessage.contains("Email")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already taken.");
+            } else {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Conflict occurred.");
+            }
         }
     }
 
@@ -64,7 +72,7 @@ public class ChatController {
     private String generateAuthToken(int userId, String username) {
         // Logic to generate an authentication token (e.g., JWT)
         // Return the generated token
-        return "GeneratedAuthToken"; // Replace with actual token generation logiccc
+        return "GeneratedAuthToken"; // Replace with actual token generation logic
     }
 
     @GetMapping("/getUser/{id}")

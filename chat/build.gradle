@@ -33,6 +33,7 @@ dependencies {
 	implementation 'javax.persistence:javax.persistence-api:2.2'
 	implementation 'org.hibernate:hibernate-core:6.2.0.CR3' // An implementation of JPA
 	implementation 'org.springframework.boot:spring-boot-starter-security:3.0.4'
+
 }
 
 tasks.named('test') {

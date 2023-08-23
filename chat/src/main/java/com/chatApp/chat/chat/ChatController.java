@@ -1,9 +1,12 @@
 package com.chatApp.chat.chat;
 
 import com.chatApp.chat.entity.LoginRequest;
+import com.chatApp.chat.entity.Session;
 import com.chatApp.chat.entity.User;
 import com.chatApp.chat.repository.UserRepository;
-import com.chatApp.chat.service.UserSerivce;
+import com.chatApp.chat.service.UserService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +15,14 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import static com.chatApp.chat.service.UserService.sessions;
 
 @RestController
 public class ChatController {
@@ -28,7 +38,7 @@ public class ChatController {
         return chatMessage;
     }
     @Autowired
-    private UserSerivce service;
+    private UserService service;
     @PostMapping("/saveUser")
     public ResponseEntity<?> saveUser(@RequestBody User user) {
         try {
@@ -53,7 +63,7 @@ public class ChatController {
     @Autowired
     private PasswordEncoder passwordEncoder; // Inject your PasswordEncoder here (e.g., BCryptPasswordEncoder)
     @PostMapping("/login")
-    public ResponseEntity<?> logUserIn(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> logUserIn(@RequestBody LoginRequest loginRequest, @CookieValue(name = "session_token", required = false) String sessionTokenCookie, HttpServletResponse response) throws IOException {
         // Retrieve user from the database based on the provided username
         User user = userRepository.findByUsername(loginRequest.getUsername());
 
@@ -62,6 +72,16 @@ public class ChatController {
             if (passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
                 // Passwords match, generate authentication token and return it
                 String authToken = generateAuthToken(user.getId(), user.getUsername());
+                // Log the session token cookie value
+                // Check if the session token cookie is present
+                if (StringUtils.isEmpty(sessionTokenCookie)) {
+                    // Create a new session token and store it
+                    createCookie(response, user);
+                    System.out.println("Created session cookie for user: " + user.getUsername());
+                }
+
+                System.out.println(sessions);
+
                 return ResponseEntity.status(HttpStatus.OK).body(authToken);
             }
         }
@@ -80,5 +100,18 @@ public class ChatController {
         return service.getUser(id);
     }
 
+    public void createCookie(HttpServletResponse response, User user) throws IOException {
+        UUID sessionToken = UUID.randomUUID();
 
+        Session session = new Session();
+        session.setUser(user);
+        session.setLastSeen(LocalDateTime.now());
+
+        sessions.put(sessionToken.toString(), session);
+
+        Cookie sessionCookie = new Cookie("session_token", sessionToken.toString());
+        sessionCookie.setPath("/");
+        sessionCookie.setMaxAge(2 * 60 * 60); // 2 hours in seconds
+        response.addCookie(sessionCookie);
+    }
 }

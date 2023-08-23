@@ -1,17 +1,23 @@
 package com.chatApp.chat.service;
 
+import com.chatApp.chat.entity.Session;
 import com.chatApp.chat.entity.User;
 import com.chatApp.chat.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Service
-public class UserSerivce {
+public class UserService {
     @Autowired
     private UserRepository userRepository;
     @Autowired
     private BCryptPasswordEncoder passwordEncoder; // Inject the password encoder
+    public static Map<String, Session> sessions = new HashMap<>();
+
     public boolean doesUsernameExist(String username) {
         return userRepository.existsByUsername(username);
     }
@@ -37,4 +43,19 @@ public class UserSerivce {
     public User getUser(int id){
         return userRepository.findById(id).orElse(null);
     }
+
+//    public void createCookie(HttpServletResponse response, User user) throws IOException {
+//        UUID sessionToken = UUID.randomUUID();
+//
+//        Session session = new Session();
+//        session.setUser(user);
+//        session.setLastSeen(LocalDateTime.now());
+//
+//        sessions.put(sessionToken.toString(), session);
+//
+//        Cookie sessionCookie = new Cookie("session_token", sessionToken.toString());
+//        sessionCookie.setPath("/");
+//        sessionCookie.setMaxAge(2 * 60 * 60); // 2 hours in seconds
+//        response.addCookie(sessionCookie);
+//    }
 }

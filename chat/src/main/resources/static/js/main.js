@@ -23,6 +23,36 @@ let colors = [
     '#ffc107', '#ff85af', '#FF9800', '#39bbb0'
 ];
 
+document.addEventListener('DOMContentLoaded', () => {
+    // Fetch request to check user's session status
+    fetch('/check-session')
+        .then(response => {
+            if (response.ok) {
+                // User has an active session, perform necessary actions
+                return response.text(); // Return the promise from response.text()
+            } else {
+                // User does not have a valid session, display login page
+                loginPage.classList.remove('hidden');
+                chatPage.classList.add('hidden');
+                throw new Error('Invalid session');
+            }
+        })
+        .then(data => {
+            // Now 'username' holds the resolved value of response.text()
+            username = data
+            loginPage.classList.add('hidden');
+            chatPage.classList.remove('hidden');
+
+            let socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, onConnected, onError);
+        })
+        .catch(error => {
+            console.error('Error checking session status:', error);
+        });
+});
+
 function connect(event) {
     event.preventDefault();
 

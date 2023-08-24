@@ -44,18 +44,5 @@ public class UserService {
         return userRepository.findById(id).orElse(null);
     }
 
-//    public void createCookie(HttpServletResponse response, User user) throws IOException {
-//        UUID sessionToken = UUID.randomUUID();
-//
-//        Session session = new Session();
-//        session.setUser(user);
-//        session.setLastSeen(LocalDateTime.now());
-//
-//        sessions.put(sessionToken.toString(), session);
-//
-//        Cookie sessionCookie = new Cookie("session_token", sessionToken.toString());
-//        sessionCookie.setPath("/");
-//        sessionCookie.setMaxAge(2 * 60 * 60); // 2 hours in seconds
-//        response.addCookie(sessionCookie);
-//    }
+
 }

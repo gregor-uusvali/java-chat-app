@@ -4,6 +4,7 @@ import com.chatApp.chat.entity.LoginRequest;
 import com.chatApp.chat.entity.Session;
 import com.chatApp.chat.entity.User;
 import com.chatApp.chat.repository.UserRepository;
+import com.chatApp.chat.service.SessionService;
 import com.chatApp.chat.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,33 +21,44 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import static com.chatApp.chat.service.UserService.sessions;
 
 @RestController
 public class ChatController {
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private SessionService sessionService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @MessageMapping("/chat.sendMessage")
     @SendTo("/topic/public")
-    public ChatMessage sendMessage(@Payload ChatMessage chatMessage){
+    public ChatMessage sendMessage(@Payload ChatMessage chatMessage) {
         return chatMessage;
     }
+
     @MessageMapping("/chat.addUser")
     @SendTo("/topic/public")
-    public ChatMessage addUser(@Payload ChatMessage chatMessage, SimpMessageHeaderAccessor headerAccessor){
+    public ChatMessage addUser(@Payload ChatMessage chatMessage, SimpMessageHeaderAccessor headerAccessor) {
         headerAccessor.getSessionAttributes().put("username", chatMessage.getSender());
         return chatMessage;
     }
-    @Autowired
-    private UserService service;
+
     @PostMapping("/saveUser")
-    public ResponseEntity<?> saveUser(@RequestBody User user) {
+    public ResponseEntity<String> saveUser(@RequestBody User user) {
         try {
-            User savedUser = service.saveUser(user);
-            return ResponseEntity.ok(savedUser);
+            User savedUser = userService.saveUser(user);
+            return ResponseEntity.ok("User saved: " + savedUser.getUsername());
         } catch (IllegalArgumentException e) {
-            String errorMessage = e.getMessage(); // Assuming IllegalArgumentException contains information about conflict (username or email)
-            System.out.println(errorMessage);
+            String errorMessage = e.getMessage();
             if (errorMessage.contains("Username")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already taken.");
             } else if (errorMessage.contains("Email")) {
@@ -57,51 +69,44 @@ public class ChatController {
         }
     }
 
-    @Autowired
-    private UserRepository userRepository; // Inject your UserRepository here
-
-    @Autowired
-    private PasswordEncoder passwordEncoder; // Inject your PasswordEncoder here (e.g., BCryptPasswordEncoder)
     @PostMapping("/login")
-    public ResponseEntity<?> logUserIn(@RequestBody LoginRequest loginRequest, @CookieValue(name = "session_token", required = false) String sessionTokenCookie, HttpServletResponse response) throws IOException {
-        // Retrieve user from the database based on the provided username
+    public ResponseEntity<String> logUserIn(@RequestBody LoginRequest loginRequest,
+                                            @CookieValue(name = "session_token", required = false) String sessionTokenCookie,
+                                            HttpServletResponse response) throws IOException {
         User user = userRepository.findByUsername(loginRequest.getUsername());
 
-        if (user != null) {
-            // Compare hashed password in the database with provided password
-            if (passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-                // Passwords match, generate authentication token and return it
-                String authToken = generateAuthToken(user.getId(), user.getUsername());
-                // Log the session token cookie value
-                // Check if the session token cookie is present
-                if (StringUtils.isEmpty(sessionTokenCookie)) {
-                    // Create a new session token and store it
-                    createCookie(response, user);
-                    System.out.println("Created session cookie for user: " + user.getUsername());
-                }
+        if (user != null && passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+            String authToken = generateAuthToken(user.getId(), user.getUsername());
 
-                System.out.println(sessions);
-
-                return ResponseEntity.status(HttpStatus.OK).body(authToken);
+            if (StringUtils.isEmpty(sessionTokenCookie)) {
+                // Generate a new session UUID
+                String sessionToken = UUID.randomUUID().toString();
+                createCookie(response, user, sessionToken);
+                System.out.println("Created session cookie for user: " + user.getUsername());
+                sessionService.saveSession(user, sessionToken); // Save the session with the generated UUID
+            } else {
+                sessionService.saveSession(user, sessionTokenCookie); // Save the session with the existing UUID
             }
+
+            System.out.println("Sessions after adding user session: " + getSessionInfo(sessions)); // Print the sessions map
+
+            return ResponseEntity.status(HttpStatus.OK).body(authToken);
         }
 
-        // Invalid credentials
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-    }
-    private String generateAuthToken(int userId, String username) {
-        // Logic to generate an authentication token (e.g., JWT)
-        // Return the generated token
-        return "GeneratedAuthToken"; // Replace with actual token generation logic
     }
 
     @GetMapping("/getUser/{id}")
-    public User getUser(@PathVariable int id){
-        return service.getUser(id);
+    public User getUser(@PathVariable int id) {
+        return userService.getUser(id);
     }
 
-    public void createCookie(HttpServletResponse response, User user) throws IOException {
-        UUID sessionToken = UUID.randomUUID();
+    private String generateAuthToken(int userId, String username) {
+        return "GeneratedAuthToken"; // Replace with actual token generation logic
+    }
+
+    private void createCookie(HttpServletResponse response, User user, String sessionToken) throws IOException {
+
 
         Session session = new Session();
         session.setUser(user);
@@ -113,5 +118,44 @@ public class ChatController {
         sessionCookie.setPath("/");
         sessionCookie.setMaxAge(2 * 60 * 60); // 2 hours in seconds
         response.addCookie(sessionCookie);
+    }
+    private String getSessionInfo(Map<String, Session> sessions) {
+        StringBuilder info = new StringBuilder("{");
+        for (Map.Entry<String, Session> entry : sessions.entrySet()) {
+            Session session = entry.getValue();
+            User user = session.getUser();
+            info.append(entry.getKey()).append(": ")
+                    .append("username=").append(user.getUsername())
+                    .append(", lastSeen=").append(session.getLastSeen())
+                    .append(" | ");
+        }
+        if (!sessions.isEmpty()) {
+            info.setLength(info.length() - 3); // Remove the last " | "
+        }
+        info.append("}");
+        return info.toString();
+    }
+    @GetMapping("/check-session")
+    public ResponseEntity<String> homePage(@CookieValue(name = "session_token", required = false) String sessionTokenCookie,
+                                           HttpServletResponse response) {
+        if (sessionTokenCookie != null) {
+            // Retrieve session information based on sessionTokenCookie
+            Session session = sessionService.getSessionBySessionUuid(sessionTokenCookie);
+
+            if (session != null) {
+                // Update the last_seen timestamp of the session
+                session.setLastSeen(LocalDateTime.now());
+                sessionService.updateSessionLastSeen(session);
+
+                String username = session.getUser().getUsername();
+
+                // Respond with a welcome message including the username
+                return ResponseEntity.ok(username);
+
+            }
+        }
+
+        // Redirect the user to the login page or handle accordingly
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Please log in");
     }
 }

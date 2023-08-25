@@ -26,9 +26,9 @@ public class SessionService {
         sessionRepository.save(session);
     }
 
-    public void saveSession(Session session) {
-        sessionRepository.save(session);
-    }
+//    public void saveSession(Session session) {
+//        sessionRepository.save(session);
+//    }
 
     public void saveSession(User user, String sessionUuid) {
         Session sessionEntity = new Session();
@@ -38,5 +38,9 @@ public class SessionService {
         sessionEntity.setLastSeen(LocalDateTime.now());
 
         sessionRepository.save(sessionEntity);
+    }
+
+    public void deleteSessionBySessionUuid(String sessionTokenCookie) {
+        sessionRepository.delete(getSessionBySessionUuid(sessionTokenCookie));
     }
 }

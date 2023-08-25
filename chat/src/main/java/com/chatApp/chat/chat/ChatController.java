@@ -1,8 +1,10 @@
 package com.chatApp.chat.chat;
 
 import com.chatApp.chat.entity.LoginRequest;
+import com.chatApp.chat.entity.Message;
 import com.chatApp.chat.entity.Session;
 import com.chatApp.chat.entity.User;
+import com.chatApp.chat.repository.MessageRepository;
 import com.chatApp.chat.repository.UserRepository;
 import com.chatApp.chat.service.SessionService;
 import com.chatApp.chat.service.UserService;
@@ -21,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,9 +43,17 @@ public class ChatController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private MessageRepository messageRepository;
+
     @MessageMapping("/chat.sendMessage")
     @SendTo("/topic/public")
     public ChatMessage sendMessage(@Payload ChatMessage chatMessage) {
+        Message message = new Message();
+        message.setSender(chatMessage.getSender());
+        message.setContent(chatMessage.getContent());
+        message.setTimestamp(LocalDateTime.now());
+        messageRepository.save(message);
         return chatMessage;
     }
 
@@ -69,8 +81,30 @@ public class ChatController {
         }
     }
 
+    @GetMapping("/logout")
+    public ResponseEntity<String> logout(@CookieValue(name = "session_token", required = false) String sessionTokenCookie,
+                                         HttpServletResponse response) {
+        if (sessionTokenCookie != null) {
+            // Remove session from sessions map
+            sessions.remove(sessionTokenCookie); // Remove the user's session from the map
+
+            // Delete session from database
+            sessionService.deleteSessionBySessionUuid(sessionTokenCookie);
+
+            // Clear browser cookie
+            Cookie sessionCookie = new Cookie("session_token", "");
+            sessionCookie.setPath("/");
+            sessionCookie.setMaxAge(0); // Set expiration to a past date
+            response.addCookie(sessionCookie);
+
+            return ResponseEntity.ok("Logged out successfully");
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("No session found");
+    }
+
     @PostMapping("/login")
-    public ResponseEntity<String> logUserIn(@RequestBody LoginRequest loginRequest,
+    public ResponseEntity<Map<String, Object>> logUserIn(@RequestBody LoginRequest loginRequest,
                                             @CookieValue(name = "session_token", required = false) String sessionTokenCookie,
                                             HttpServletResponse response) throws IOException {
         User user = userRepository.findByUsername(loginRequest.getUsername());
@@ -90,10 +124,15 @@ public class ChatController {
 
             System.out.println("Sessions after adding user session: " + getSessionInfo(sessions)); // Print the sessions map
 
-            return ResponseEntity.status(HttpStatus.OK).body(authToken);
+            List<Message> chatMessages = messageRepository.findAll();
+
+            Map<String, Object> responseBody = new HashMap<>();
+            responseBody.put("chatMessages", chatMessages);
+
+            return ResponseEntity.ok(responseBody);
         }
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
     }
 
     @GetMapping("/getUser/{id}")
@@ -136,7 +175,7 @@ public class ChatController {
         return info.toString();
     }
     @GetMapping("/check-session")
-    public ResponseEntity<String> homePage(@CookieValue(name = "session_token", required = false) String sessionTokenCookie,
+    public ResponseEntity<Map<String, Object>> homePage(@CookieValue(name = "session_token", required = false) String sessionTokenCookie,
                                            HttpServletResponse response) {
         if (sessionTokenCookie != null) {
             // Retrieve session information based on sessionTokenCookie
@@ -149,13 +188,18 @@ public class ChatController {
 
                 String username = session.getUser().getUsername();
 
-                // Respond with a welcome message including the username
-                return ResponseEntity.ok(username);
+                // Retrieve chat messages from the database and send them to the client
+                List<Message> chatMessages = messageRepository.findAll();
+                Map<String, Object> responseBody = new HashMap<>();
+                responseBody.put("username", username);
+                responseBody.put("chatMessages", chatMessages);
+
+                return ResponseEntity.ok(responseBody);
 
             }
         }
 
         // Redirect the user to the login page or handle accordingly
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Please log in");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
     }
 }

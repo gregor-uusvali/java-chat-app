@@ -3,6 +3,8 @@
 const loginPage = document.querySelector('#login-page');
 const registerPage = document.getElementById("register-page")
 const chatPage = document.querySelector('#chat-page');
+const logOutBtn = document.getElementById('logoutBtn')
+const logOutForm = document.getElementById('logoutForm')
 const loginForm = document.querySelector('#loginForm');
 const registerForm = document.querySelector('#registerForm');
 const messageForm = document.querySelector('#messageForm');
@@ -29,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(response => {
             if (response.ok) {
                 // User has an active session, perform necessary actions
-                return response.text(); // Return the promise from response.text()
+                return response.json(); // Return the promise from response.text()
             } else {
                 // User does not have a valid session, display login page
                 loginPage.classList.remove('hidden');
@@ -39,10 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(data => {
             // Now 'username' holds the resolved value of response.text()
-            username = data
+            loadMsgFromDb(data)
+            username = data.username
             loginPage.classList.add('hidden');
             chatPage.classList.remove('hidden');
-
+            logOutBtn.classList.remove('hidden')
             let socket = new SockJS('/ws');
             stompClient = Stomp.over(socket);
 
@@ -72,13 +75,14 @@ function connect(event) {
     })
         .then(response => {
             if (response.ok) {
-                loginPage.classList.add('hidden');
-                chatPage.classList.remove('hidden');
-
+                // loginPage.classList.add('hidden');
+                // chatPage.classList.remove('hidden');
+                // logOutBtn.classList.remove('hidden')
                 let socket = new SockJS('/ws');
                 stompClient = Stomp.over(socket);
 
                 stompClient.connect({}, onConnected, onError); // You need to define these functions
+                return response.json();
             } else if (response.status == 401) {
                 logErrorMsg.innerText = "Invalid credentials"
                 setTimeout(() => {
@@ -88,7 +92,12 @@ function connect(event) {
             }
         })
         .then(data => {
-            console.log(data);
+            loadMsgFromDb(data)// Check the received data
+            const chatMessages = data.chatMessages; // Access chatMessages from data
+            console.log(chatMessages);
+            loginPage.classList.add('hidden');
+            chatPage.classList.remove('hidden');
+            logOutBtn.classList.remove('hidden')
         })
         .catch(error => {
             console.error('Error logging user in:', error);
@@ -227,6 +236,36 @@ function onMessageReceived(payload) {
     messageArea.scrollTop = messageArea.scrollHeight;
 }
 
+function loadMsgFromDb(payloadList){
+    // console.log(payloadList.chatMessages)
+    payloadList.chatMessages.forEach(payload => {
+        let messageElement = document.createElement('li');
+
+        messageElement.classList.add('chat-message');
+
+        let avatarElement = document.createElement('i');
+        let avatarText = document.createTextNode(payload.sender[0]);
+        avatarElement.appendChild(avatarText);
+        avatarElement.style['background-color'] = getAvatarColor(payload.sender);
+
+        messageElement.appendChild(avatarElement);
+
+        let usernameElement = document.createElement('span');
+        let usernameText = document.createTextNode(payload.sender);
+        usernameElement.appendChild(usernameText);
+        messageElement.appendChild(usernameElement);
+
+        let textElement = document.createElement('p');
+        let messageText = document.createTextNode(payload.content);
+        textElement.appendChild(messageText);
+
+        messageElement.appendChild(textElement);
+
+        messageArea.appendChild(messageElement);
+
+    })
+}
+
 
 function getAvatarColor(messageSender) {
     let hash = 0;
@@ -252,7 +291,40 @@ const showLoginPage = (e) => {
     e.preventDefault()
 }
 
+const logOut = (e) => {
+    e.preventDefault();
 
+    // Disconnect the WebSocket connection
+    stompClient.disconnect(() => {
+        console.log('WebSocket disconnected');
+    });
+
+    // Send a logout request to the server
+    fetch('/logout', {
+        method: 'GET'
+    })
+        .then(response => {
+            console.log(response);
+            if (response.ok) {
+                // Reset UI and user data
+                chatPage.classList.add('hidden');
+                loginPage.classList.remove('hidden');
+                logOutBtn.classList.add('hidden');
+                username = null;
+            } else {
+                console.error('Logout failed');
+            }
+        })
+        .catch(error => {
+            console.error('Error during logout:', error);
+        });
+
+    // Notify the server that the user is leaving
+    stompClient.send("/app/chat.addUser", {}, JSON.stringify({ sender: username, type: 'LEAVE' }));
+};
+
+
+logOutBtn.addEventListener('click', logOut, true)
 linkToRegisterBtn.addEventListener('click', showRegisterPage, true)
 linkToLoginPageBtn.addEventListener('click', showLoginPage, true)
 loginForm.addEventListener('submit', connect, true)

@@ -34,7 +34,6 @@ Open your web browser and navigate to http://localhost:8088.
 Enter your username and password.  
 Click the "Login" button.  
 After logging in, you'll be redirected to the chat interface.  
-Choose a chat room or start a new chat.  
 Enter your message in the input field and press Enter or click the "Send" button.  
 Messages will appear in the chat window in real time.  
 ### API Endpoints   

@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function connect(event) {
     event.preventDefault();
-
+    let invalidCredentials = false;
     username = document.querySelector('#login-name').value.trim();
     const password = document.querySelector('#login-password').value;
     const user = {
@@ -84,20 +84,24 @@ function connect(event) {
                 stompClient.connect({}, onConnected, onError); // You need to define these functions
                 return response.json();
             } else if (response.status == 401) {
+                invalidCredentials = true
                 logErrorMsg.innerText = "Invalid credentials"
                 setTimeout(() => {
                     logErrorMsg.innerText = ""
-                }, 3000)
+                }, 4000)
                 // throw new Error('User login error: ' + response.statusText);
             }
         })
         .then(data => {
-            loadMsgFromDb(data)// Check the received data
-            const chatMessages = data.chatMessages; // Access chatMessages from data
-            console.log(chatMessages);
-            loginPage.classList.add('hidden');
-            chatPage.classList.remove('hidden');
-            logOutBtn.classList.remove('hidden')
+            if(!invalidCredentials){
+                loadMsgFromDb(data)// Check the received data
+                const chatMessages = data.chatMessages; // Access chatMessages from data
+                console.log(chatMessages);
+                loginPage.classList.add('hidden');
+                chatPage.classList.remove('hidden');
+                logOutBtn.classList.remove('hidden')
+
+            }
         })
         .catch(error => {
             console.error('Error logging user in:', error);
@@ -147,7 +151,7 @@ function register(event) {
                         regErrorMsg.innerText = data
                         setTimeout(() => {
                             regErrorMsg.innerText = ""
-                        }, 3000)
+                        }, 4000)
                         console.error('Error saving user', data);
                     }
                 })
@@ -158,7 +162,7 @@ function register(event) {
             regErrorMsg.innerText = "Passwords must match!"
             setTimeout(() => {
                 regErrorMsg.innerText = ""
-            }, 3000)
+            }, 4000)
         }
 
     }
